@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { Nr1ReportGenerator } from "@/components/nr1-report-generator";
+import { ReportsTabs } from "@/components/reports-tabs";
 
 export default async function RelatoriosPage() {
   const session = await auth();
@@ -15,13 +15,13 @@ export default async function RelatoriosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Relatórios NR1</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Relatórios</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Consolide ocorrências confirmadas e a evolução do risco em um período, para compor o dossiê de
-          conformidade (PGR/NR1) ou embasar um processo interno de apuração.
+          Identifique quem, onde e quando as ocorrências mais graves acontecem — a base para antecipar
+          problemas — ou gere o dossiê de conformidade com ocorrências confirmadas para NR1/PGR.
         </p>
       </div>
-      <Nr1ReportGenerator environments={environments} />
+      <ReportsTabs environments={environments} />
     </div>
   );
 }

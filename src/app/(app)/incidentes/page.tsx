@@ -12,7 +12,15 @@ export default async function IncidentesPage({ searchParams }: { searchParams: P
     where: { organizationId, status: (status as any) || undefined },
     orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
     take: 200,
-    include: { environment: { select: { name: true } } },
+    include: {
+      environment: { select: { name: true } },
+      transcriptSegment: { select: { speakerLabel: true, employee: { select: { name: true } } } },
+      involvedEmployees: {
+        where: { roleInIncident: "OFENSOR" },
+        include: { employee: { select: { name: true } } },
+        take: 1,
+      },
+    },
   });
 
   const filters = [
@@ -49,33 +57,40 @@ export default async function IncidentesPage({ searchParams }: { searchParams: P
               <th className="px-4 py-3">Data</th>
               <th className="px-4 py-3">Ambiente</th>
               <th className="px-4 py-3">Tipo</th>
+              <th className="px-4 py-3">Quem</th>
               <th className="px-4 py-3">Severidade</th>
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {incidents.map((incident) => (
-              <tr key={incident.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <Link href={`/incidentes/${incident.id}`} className="font-medium text-brand-700">
-                    {new Date(incident.createdAt).toLocaleString("pt-BR")}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{incident.environment.name}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  <IncidentTypeLabel type={incident.type} />
-                </td>
-                <td className="px-4 py-3">
-                  <SeverityBadge severity={incident.severity} />
-                </td>
-                <td className="px-4 py-3">
-                  <IncidentStatusBadge status={incident.status} />
-                </td>
-              </tr>
-            ))}
+            {incidents.map((incident) => {
+              const ofensor = incident.involvedEmployees[0]?.employee.name;
+              const speaker = incident.transcriptSegment?.employee?.name ?? incident.transcriptSegment?.speakerLabel;
+              const quem = ofensor ?? speaker ?? "—";
+              return (
+                <tr key={incident.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <Link href={`/incidentes/${incident.id}`} className="font-medium text-brand-700">
+                      {new Date(incident.createdAt).toLocaleString("pt-BR")}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{incident.environment.name}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <IncidentTypeLabel type={incident.type} />
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{quem}</td>
+                  <td className="px-4 py-3">
+                    <SeverityBadge severity={incident.severity} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <IncidentStatusBadge status={incident.status} />
+                  </td>
+                </tr>
+              );
+            })}
             {incidents.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                   Nenhuma ocorrência encontrada.
                 </td>
               </tr>
