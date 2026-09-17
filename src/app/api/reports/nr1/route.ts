@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { apiHandler, requireSession } from "@/lib/tenant";
+import { buildRiskMatrix } from "@/lib/risk-matrix";
 
 const querySchema = z.object({
   periodStart: z.string().datetime(),
@@ -10,11 +11,13 @@ const querySchema = z.object({
 });
 
 /**
- * Gera o pacote de documentação NR1 de um período: consolida ocorrências
+ * Gera o pacote de documentação NR-1 de um período: consolida ocorrências
  * confirmadas, colaboradores envolvidos, trechos de transcrição que as
- * embasam e a evolução do indicador de risco — a base do dossiê a ser
- * apresentado em fiscalização, PGR (Programa de Gerenciamento de Riscos) ou
- * processo interno de apuração.
+ * embasam e uma matriz de risco (probabilidade × severidade) por tipo de
+ * ocorrência — o formato usado no Inventário de Riscos Psicossociais
+ * (FRPRT) do PGR. Isso alimenta o PGR da empresa; não substitui a
+ * elaboração/validação pelo profissional de SST responsável designado por
+ * ela, conforme a NR-1.
  */
 export const GET = apiHandler(async (req: NextRequest) => {
   const { organizationId, userId } = await requireSession();
@@ -60,12 +63,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
     return acc;
   }, {});
 
+  const riskMatrix = buildRiskMatrix(incidents);
+
   const summary = {
     totalConfirmedIncidents: incidents.length,
     byType,
     averageRiskScore: riskSnapshots.length
       ? Math.round(riskSnapshots.reduce((s, r) => s + r.riskScore, 0) / riskSnapshots.length)
       : 0,
+    riskMatrix,
   };
 
   const report = await prisma.complianceReport.create({
@@ -79,5 +85,5 @@ export const GET = apiHandler(async (req: NextRequest) => {
     },
   });
 
-  return NextResponse.json({ report, incidents, riskSnapshots, summary });
+  return NextResponse.json({ report, incidents, riskSnapshots, riskMatrix, summary });
 });

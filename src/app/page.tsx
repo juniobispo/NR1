@@ -109,7 +109,9 @@ export default function LandingPage() {
           <p className="mt-4 text-slate-600">
             Em vez de descobrir o problema só quando vira reclamação formal, você enxerga com antecedência:
             qual loja concentra mais ocorrências, em que horário elas acontecem e se o mesmo colaborador
-            aparece repetido. Isso é o que separa reagir de antecipar — e é exatamente o espírito da NR1.
+            aparece repetido. E gera essa classificação por probabilidade × severidade — o mesmo formato do
+            Inventário de Riscos exigido no PGR da NR-1 — pronta para o profissional de SST da sua empresa
+            revisar e formalizar. Isso é o que separa reagir de antecipar.
           </p>
         </div>
       </section>

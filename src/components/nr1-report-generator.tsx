@@ -4,10 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { SeverityBadge, IncidentTypeLabel } from "@/components/badges";
 
+type RiskMatrixRow = {
+  type: string;
+  frprtCategory: string;
+  occurrences: number;
+  probability: string;
+  dominantSeverity: string;
+  riskLevel: "Baixo" | "Moderado" | "Alto" | "Crítico";
+};
+
 type ReportResult = {
   report: { id: string; createdAt: string };
   incidents: any[];
+  riskMatrix: RiskMatrixRow[];
   summary: { totalConfirmedIncidents: number; byType: Record<string, number>; averageRiskScore: number };
+};
+
+const RISK_LEVEL_STYLE: Record<RiskMatrixRow["riskLevel"], string> = {
+  Baixo: "bg-emerald-50 text-emerald-700",
+  Moderado: "bg-amber-50 text-amber-700",
+  Alto: "bg-orange-50 text-orange-700",
+  Crítico: "bg-red-50 text-red-700",
 };
 
 export function Nr1ReportGenerator({ environments }: { environments: { id: string; name: string }[] }) {
@@ -91,6 +108,50 @@ export function Nr1ReportGenerator({ environments }: { environments: { id: strin
                 ))}
                 {Object.keys(result.summary.byType).length === 0 && <li className="text-slate-400">Nenhuma</li>}
               </ul>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="font-semibold text-slate-900">
+              Matriz de risco — Inventário de Fatores de Risco Psicossociais (FRPRT)
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Classificação por probabilidade × severidade, no formato usado no Inventário de Riscos do PGR
+              (NR-1). Ponto de partida documentado — valide ou ajuste os critérios com o profissional de SST
+              responsável pelo PGR da sua empresa antes de formalizar o documento oficial.
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-4">Fator de risco (FRPRT)</th>
+                    <th className="py-2 pr-4">Ocorrências</th>
+                    <th className="py-2 pr-4">Probabilidade</th>
+                    <th className="py-2 pr-4">Severidade</th>
+                    <th className="py-2 pr-4">Nível de risco</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {result.riskMatrix.map((row) => (
+                    <tr key={row.type}>
+                      <td className="py-2 pr-4 text-slate-800">{row.frprtCategory}</td>
+                      <td className="py-2 pr-4 text-slate-600">{row.occurrences}</td>
+                      <td className="py-2 pr-4 text-slate-600">{row.probability}</td>
+                      <td className="py-2 pr-4 text-slate-600">{row.dominantSeverity}</td>
+                      <td className="py-2 pr-4">
+                        <span className={`badge ${RISK_LEVEL_STYLE[row.riskLevel]}`}>{row.riskLevel}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {result.riskMatrix.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-3 text-center text-slate-400">
+                        Nenhuma ocorrência confirmada no período para compor a matriz.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
