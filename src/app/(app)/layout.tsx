@@ -17,8 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user) redirect("/login");
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <div className="flex min-h-screen bg-slate-50 print:bg-white">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white print:hidden">
         <div className="border-b border-slate-200 px-5 py-4">
           <Link href="/dashboard" className="text-base font-semibold text-brand-700">
             NR1 Prova

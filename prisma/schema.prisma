@@ -138,6 +138,7 @@ model Employee {
   role           String?  // cargo
   active         Boolean  @default(true)
   voiceEnrolled  Boolean  @default(false) // possui amostra de voz cadastrada p/ auxiliar reconhecimento de falante
+  consentToken   String   @unique @default(cuid()) // usado no link público /consentimento/[token] — não é o id do registro, evita expor a chave primária publicamente
   createdAt      DateTime @default(now())
 
   consentRecords     ConsentRecord[]
@@ -162,6 +163,9 @@ model ConsentRecord {
   revokedAt      DateTime?
   documentUrl    String?  // termo de ciência/consentimento assinado, armazenado em storage
   notes          String?
+  submittedBy    ConsentSource @default(RH_MANUAL)
+  ipAddress      String?  // capturado quando o próprio colaborador confirma pelo link público — evidência do aceite
+  userAgent      String?
   createdAt      DateTime @default(now())
 
   @@index([organizationId])
@@ -172,6 +176,11 @@ model ConsentRecord {
 enum ConsentType {
   GRAVACAO_AUDIO_VIDEO
   TRATAMENTO_DE_DADOS
+}
+
+enum ConsentSource {
+  SELF       // o próprio colaborador confirmou pelo link público /consentimento/[token]
+  RH_MANUAL  // RH/gestor registrou manualmente (ex.: termo assinado em papel)
 }
 
 // ---------------------------------------------------------------------------

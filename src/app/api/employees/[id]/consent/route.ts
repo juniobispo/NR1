@@ -42,6 +42,7 @@ export const POST = apiHandler(async (req, ctx) => {
       revokedAt: parsed.data.granted ? null : new Date(),
       documentUrl: parsed.data.documentUrl,
       notes: parsed.data.notes,
+      submittedBy: "RH_MANUAL",
     },
   });
 

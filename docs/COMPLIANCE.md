@@ -53,7 +53,16 @@ comercial nisso, valide contra o texto publicado no DOU e em
    (`prisma/schema.prisma`) exige um registro explícito, por colaborador (e opcionalmente por ambiente), antes
    de a gravação daquele ambiente poder ser tratada como base para uma ocorrência formal. A tela
    **Colaboradores** centraliza esse controle.
-2. **Transparência.** A gravação de ambientes de trabalho para fins de segurança/conformidade deve ser
+2. **Consentimento auto-atestado, com trilha de auditoria, não apenas "RH marcou uma caixinha".** Cada
+   colaborador tem um link pessoal e único (`/consentimento/[token]`, token opaco de 32+ caracteres — não a
+   chave primária do registro) onde ele mesmo lê o termo (com a finalidade explícita: antecipar/prevenir
+   reclamações relacionadas à NR-1) e confirma. O registro guarda `submittedBy` (SELF vs. RH_MANUAL), IP e
+   user-agent de quem confirmou — isso é o que torna o "OK dele" **resgatável rapidamente** em caso de
+   reclamação/disputa, em vez de depender da palavra do RH. A tela `/colaboradores/[id]` mostra esse histórico
+   completo e o botão para copiar o link (para enviar por WhatsApp, por exemplo). O registro manual por RH
+   continua existindo como alternativa (ex.: termo assinado em papel), mas fica marcado como tal, com peso
+   probatório distinto.
+3. **Transparência.** A gravação de ambientes de trabalho para fins de segurança/conformidade deve ser
    comunicada de forma clara aos colaboradores (aviso visível no ambiente, política interna assinada) — isso é
    um requisito prático, não só legal, para que as gravações tenham valor probatório.
 3. **Minimização e retenção limitada.** `Organization.retentionDays` define por quanto tempo mídia bruta e

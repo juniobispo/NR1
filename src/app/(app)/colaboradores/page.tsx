@@ -1,7 +1,7 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NewEmployeeForm } from "@/components/new-employee-form";
-import { ConsentToggleButton } from "@/components/consent-toggle-button";
 
 export default async function ColaboradoresPage() {
   const session = await auth();
@@ -71,7 +71,11 @@ export default async function ColaboradoresPage() {
               const granted = !!latestConsent?.granted;
               return (
                 <tr key={emp.id}>
-                  <td className="px-4 py-3 font-medium text-slate-800">{emp.name}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <Link href={`/colaboradores/${emp.id}`} className="hover:text-brand-700">
+                      {emp.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{emp.department ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600">{emp.role ?? "—"}</td>
                   <td className="px-4 py-3">
@@ -80,7 +84,9 @@ export default async function ColaboradoresPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <ConsentToggleButton employeeId={emp.id} granted={granted} />
+                    <Link href={`/colaboradores/${emp.id}`} className="text-sm font-medium text-brand-600">
+                      Link de consentimento →
+                    </Link>
                   </td>
                 </tr>
               );
