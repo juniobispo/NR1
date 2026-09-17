@@ -23,6 +23,35 @@ export default async function ColaboradoresPage() {
         </p>
       </div>
 
+      <details className="card group">
+        <summary className="cursor-pointer list-none font-semibold text-slate-900">
+          <span className="inline-flex items-center gap-2">
+            ⚖️ Base legal desta captação
+            <span className="text-xs font-normal text-brand-600 group-open:hidden">(clique para ver)</span>
+          </span>
+        </summary>
+        <div className="mt-3 space-y-2 text-sm text-slate-600">
+          <p>
+            <strong>Vídeo:</strong> monitoramento por câmera no ambiente de trabalho é considerado lícito pela
+            jurisprudência do TST, desde que haja transparência (colaborador sabe que existe) e
+            proporcionalidade (nunca em banheiro, vestiário ou área de descanso).
+          </p>
+          <p>
+            <strong>Áudio:</strong> é mais sensível. A gravação de conversa é pacificamente lícita quando feita
+            por quem participa dela — não é o caso aqui, já que o dispositivo capta conversas entre
+            colaboradores das quais a empresa não participa. Não há vedação penal específica (isso não é
+            interceptação telefônica), mas também não há jurisprudência tão consolidada quanto a de câmeras
+            para esse formato. Por isso o consentimento abaixo é <strong>obrigatório</strong>, não opcional: é a
+            camada de segurança jurídica que sustenta o uso do áudio como evidência.
+          </p>
+          <p className="text-xs text-slate-500">
+            Isto é um resumo informativo, não parecer jurídico. Valide sua política de monitoramento com
+            advogado trabalhista/DPO antes de operar em produção — detalhes e fontes em{" "}
+            <code>docs/COMPLIANCE.md</code> no repositório do projeto.
+          </p>
+        </div>
+      </details>
+
       <NewEmployeeForm />
 
       <div className="card overflow-x-auto p-0">
