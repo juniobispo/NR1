@@ -1,0 +1,419 @@
+// Plataforma NR1 — Documentação probatória de ambientes de trabalho
+// Modelo de domínio multi-tenant (uma Organization = uma empresa cliente).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy / identidade
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id             String   @id @default(cuid())
+  name           String
+  cnpj           String?  @unique
+  plan           Plan     @default(TRIAL)
+  retentionDays  Int      @default(365) // política de retenção de mídia/dados (LGPD)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users              User[]
+  environments       Environment[]
+  employees          Employee[]
+  recordings         Recording[]
+  incidents          Incident[]
+  riskSnapshots      RiskSnapshot[]
+  complianceReports  ComplianceReport[]
+  auditLogs          AuditLog[]
+  consentRecords     ConsentRecord[]
+  devices            Device[]
+
+  @@map("organizations")
+}
+
+enum Plan {
+  TRIAL
+  ESSENCIAL
+  PROFISSIONAL
+  ENTERPRISE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  organizationId String
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          UserRole  @default(GESTOR)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  reviewedIncidents Incident[] @relation("IncidentReviewer")
+  auditLogs         AuditLog[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN         // acesso total à conta da empresa
+  RH            // gestão de colaboradores, consentimentos e relatórios
+  GESTOR        // gestão de ambientes, gravações e ocorrências
+  VISUALIZADOR  // apenas leitura (ex.: jurídico externo, auditor)
+}
+
+// ---------------------------------------------------------------------------
+// Ambientes físicos e dispositivos de captura
+// ---------------------------------------------------------------------------
+
+model Environment {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String   // ex.: "Sala de reunião 2", "Recepção", "Linha de produção A"
+  location       String?
+  description    String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  devices    Device[]
+  recordings Recording[]
+  incidents  Incident[]
+  riskSnapshots RiskSnapshot[]
+  consentRecords ConsentRecord[]
+
+  @@index([organizationId])
+  @@map("environments")
+}
+
+model Device {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environmentId  String
+  environment    Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  name           String
+  type           DeviceType @default(AUDIO_VIDEO)
+  status         DeviceStatus @default(ATIVO)
+  externalId     String?  // identificador do hardware/integração (NVR, câmera IP, etc.)
+  createdAt      DateTime @default(now())
+
+  recordings Recording[]
+
+  @@index([environmentId])
+  @@map("devices")
+}
+
+enum DeviceType {
+  AUDIO
+  VIDEO
+  AUDIO_VIDEO
+}
+
+enum DeviceStatus {
+  ATIVO
+  INATIVO
+  MANUTENCAO
+}
+
+// ---------------------------------------------------------------------------
+// Colaboradores e consentimento (LGPD / CLT)
+// ---------------------------------------------------------------------------
+
+model Employee {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  department     String?
+  role           String?  // cargo
+  active         Boolean  @default(true)
+  voiceEnrolled  Boolean  @default(false) // possui amostra de voz cadastrada p/ auxiliar reconhecimento de falante
+  createdAt      DateTime @default(now())
+
+  consentRecords     ConsentRecord[]
+  transcriptSegments TranscriptSegment[]
+  incidentLinks      IncidentEmployee[]
+
+  @@index([organizationId])
+  @@map("employees")
+}
+
+model ConsentRecord {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  environmentId  String?
+  environment    Environment? @relation(fields: [environmentId], references: [id])
+  consentType    ConsentType @default(GRAVACAO_AUDIO_VIDEO)
+  granted        Boolean  @default(false)
+  grantedAt      DateTime?
+  revokedAt      DateTime?
+  documentUrl    String?  // termo de ciência/consentimento assinado, armazenado em storage
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@map("consent_records")
+}
+
+enum ConsentType {
+  GRAVACAO_AUDIO_VIDEO
+  TRATAMENTO_DE_DADOS
+}
+
+// ---------------------------------------------------------------------------
+// Gravações, transcrição e diarização de falantes
+// ---------------------------------------------------------------------------
+
+model Recording {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environmentId  String
+  environment    Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  deviceId       String?
+  device         Device? @relation(fields: [deviceId], references: [id])
+
+  startedAt      DateTime
+  endedAt        DateTime?
+  durationSec    Int?
+  videoUrl       String?  // chave/objeto no storage (S3)
+  audioUrl       String?
+  fileSizeBytes  BigInt?
+  status         RecordingStatus @default(UPLOADED)
+  failureReason  String?
+  createdAt      DateTime @default(now())
+
+  transcript Transcript?
+  incidents  Incident[]
+
+  @@index([organizationId, environmentId])
+  @@index([status])
+  @@map("recordings")
+}
+
+enum RecordingStatus {
+  UPLOADED
+  QUEUED
+  TRANSCRIBING
+  TRANSCRIBED
+  FAILED
+}
+
+model Transcript {
+  id           String   @id @default(cuid())
+  recordingId  String   @unique
+  recording    Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  provider     String   // "assemblyai" | "deepgram" | "mock"
+  language     String   @default("pt")
+  status       TranscriptStatus @default(PENDING)
+  rawResponse  Json?    // payload bruto do provedor, guardado para auditoria/reprocessamento
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  segments TranscriptSegment[]
+
+  @@map("transcripts")
+}
+
+enum TranscriptStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model TranscriptSegment {
+  id           String   @id @default(cuid())
+  transcriptId String
+  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  speakerLabel String   // rótulo bruto do provedor, ex.: "SPEAKER_00"
+  employeeId   String?  // vínculo (manual ou automático) ao colaborador identificado
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  startMs      Int
+  endMs        Int
+  text         String
+  confidence   Float?
+  sentiment    Sentiment?
+  createdAt    DateTime @default(now())
+
+  incidents Incident[]
+
+  @@index([transcriptId])
+  @@index([employeeId])
+  @@map("transcript_segments")
+}
+
+enum Sentiment {
+  POSITIVO
+  NEUTRO
+  NEGATIVO
+  HOSTIL
+}
+
+// ---------------------------------------------------------------------------
+// Ocorrências (indícios de ofensa/assédio/conflito) e apuração
+// ---------------------------------------------------------------------------
+
+model Incident {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environmentId       String
+  environment         Environment @relation(fields: [environmentId], references: [id])
+  recordingId         String
+  recording           Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  transcriptSegmentId String?
+  transcriptSegment   TranscriptSegment? @relation(fields: [transcriptSegmentId], references: [id])
+
+  type          IncidentType
+  severity      IncidentSeverity @default(MEDIUM)
+  status        IncidentStatus   @default(DETECTED)
+  detectedBy    DetectionSource  @default(AUTO)
+  description   String
+  triggerText   String?          // trecho da transcrição que originou o alerta
+  matchedTerms  String[]         @default([])
+
+  reviewedById  String?
+  reviewedBy    User? @relation("IncidentReviewer", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  reviewNotes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  involvedEmployees IncidentEmployee[]
+
+  @@index([organizationId, environmentId])
+  @@index([status, severity])
+  @@map("incidents")
+}
+
+enum IncidentType {
+  OFENSA_VERBAL
+  ASSEDIO_MORAL
+  ASSEDIO_SEXUAL
+  AMEACA
+  CONFLITO
+  DISCRIMINACAO
+  OUTRO
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  DETECTED      // sinalizado automaticamente, aguardando triagem
+  UNDER_REVIEW  // em apuração por RH/gestor
+  CONFIRMED     // ocorrência confirmada, vira documentação formal
+  DISMISSED     // falso positivo / sem mérito
+}
+
+enum DetectionSource {
+  AUTO
+  MANUAL
+}
+
+model IncidentEmployee {
+  id         String   @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  roleInIncident IncidentEmployeeRole
+
+  @@unique([incidentId, employeeId, roleInIncident])
+  @@map("incident_employees")
+}
+
+enum IncidentEmployeeRole {
+  OFENSOR
+  VITIMA
+  TESTEMUNHA
+  ENVOLVIDO
+}
+
+// ---------------------------------------------------------------------------
+// Análise preditiva simples (agregações periódicas) e relatórios formais
+// ---------------------------------------------------------------------------
+
+model RiskSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environmentId  String?
+  environment    Environment? @relation(fields: [environmentId], references: [id])
+
+  periodStart    DateTime
+  periodEnd      DateTime
+  incidentCount  Int      @default(0)
+  criticalCount  Int      @default(0)
+  hostileSegmentCount Int @default(0)
+  riskScore      Float    @default(0) // 0-100, heurística combinando frequência/severidade/tendência
+  trend          RiskTrend @default(ESTAVEL)
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, environmentId, periodStart])
+  @@map("risk_snapshots")
+}
+
+enum RiskTrend {
+  MELHORANDO
+  ESTAVEL
+  PIORANDO
+}
+
+model ComplianceReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           ReportType @default(NR1)
+  periodStart    DateTime
+  periodEnd      DateTime
+  generatedById  String?
+  fileUrl        String?  // PDF/documento exportado, armazenado em storage
+  summary        Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@map("compliance_reports")
+}
+
+enum ReportType {
+  NR1
+  INCIDENTE_INDIVIDUAL
+  AUDITORIA
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User? @relation(fields: [userId], references: [id])
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}
