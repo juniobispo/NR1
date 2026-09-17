@@ -62,7 +62,29 @@ npm run worker              # em outro terminal: processa a fila de transcriçã
 
 Sem configurar `STORAGE_*` e um provedor de transcrição real, use `TRANSCRIPTION_PROVIDER=mock` (padrão) para
 testar o pipeline completo com uma transcrição sintética — mas o upload de arquivo real ainda exige um
-storage S3-compatível configurado (ex.: MinIO local).
+storage compatível com S3.
+
+### Testando upload real sem conta AWS
+
+Para validar o fluxo de upload (URL pré-assinada → envio do arquivo → worker baixa e processa) sem conectar
+uma conta S3/R2 de verdade, suba o mock de storage incluído no projeto:
+
+```bash
+npm run storage:mock   # sobe um servidor S3-compatível local em http://localhost:4569
+```
+
+E aponte o `.env` para ele:
+
+```bash
+STORAGE_ENDPOINT="http://localhost:4569"
+STORAGE_ACCESS_KEY_ID="S3RVER"
+STORAGE_SECRET_ACCESS_KEY="S3RVER"
+STORAGE_FORCE_PATH_STYLE="true"
+```
+
+Isso já foi testado de ponta a ponta nesta configuração (upload real de arquivo → worker → transcrição →
+detecção de incidente). Quando for para produção, troque apenas essas variáveis pelas credenciais do seu
+bucket real (AWS S3, Cloudflare R2, ou um MinIO self-hosted) — nenhum código muda.
 
 ### Trocando o provedor de transcrição
 

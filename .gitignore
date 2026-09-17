@@ -13,3 +13,4 @@ tsconfig.tsbuildinfo
 .vercel
 prisma/*.db
 coverage/
+.s3rver-data/

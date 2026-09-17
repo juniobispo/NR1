@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "storage:mock": "s3rver -d .s3rver-data -a 0.0.0.0 -p 4569 --no-vhost-buckets --allow-mismatched-signatures --configure-bucket nr1-gravacoes"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -39,6 +40,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "prisma": "^5.20.0",
+    "s3rver": "^3.7.1",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
