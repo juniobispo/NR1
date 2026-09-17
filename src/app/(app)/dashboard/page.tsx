@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getTopRiskEnvironments } from "@/lib/risk-score";
+import { getPredictiveInsights } from "@/lib/predictive-insights";
 import { subDays } from "date-fns";
 import Link from "next/link";
 import { riskColor, SeverityBadge, IncidentStatusBadge, IncidentTypeLabel } from "@/components/badges";
@@ -10,7 +11,7 @@ export default async function DashboardPage() {
   const organizationId = (session!.user as any).organizationId as string;
   const since = subDays(new Date(), 30);
 
-  const [openIncidents, criticalOpen, environmentsCount, recordingsLast30d, topRisk, recentIncidents] =
+  const [openIncidents, criticalOpen, environmentsCount, recordingsLast30d, topRisk, recentIncidents, insights] =
     await Promise.all([
       prisma.incident.count({ where: { organizationId, status: { in: ["DETECTED", "UNDER_REVIEW"] } } }),
       prisma.incident.count({ where: { organizationId, severity: "CRITICAL", status: { not: "DISMISSED" } } }),
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
         take: 8,
         include: { environment: { select: { name: true } } },
       }),
+      getPredictiveInsights(organizationId),
     ]);
 
   return (
@@ -38,6 +40,38 @@ export default async function DashboardPage() {
         <StatCard label="Ambientes monitorados" value={environmentsCount} />
         <StatCard label="Gravações (30 dias)" value={recordingsLast30d} />
       </div>
+
+      <section className="card border-amber-200 bg-amber-50/40">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⚠️</span>
+          <h2 className="font-semibold text-slate-900">Sinais de atenção (preditivo)</h2>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          Padrões de horário, dia da semana e reincidência cruzados a partir do histórico de ocorrências — para
+          agir antes da próxima, não só documentar depois.
+        </p>
+        <div className="mt-4 space-y-3">
+          {insights.length === 0 && (
+            <p className="text-sm text-slate-400">
+              Ainda não há ocorrências suficientes para identificar um padrão. Conforme as gravações forem
+              processadas, alertas como "pico às sextas à tarde" ou "reincidência do mesmo colaborador"
+              aparecerão aqui.
+            </p>
+          )}
+          {insights.map((insight) => (
+            <Link
+              key={insight.environmentId}
+              href={`/ambientes/${insight.environmentId}`}
+              className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-white px-3 py-2 hover:border-amber-400"
+            >
+              <p className="text-sm text-slate-800">{insight.message}</p>
+              <span className={`shrink-0 text-sm font-semibold ${riskColor(insight.riskScore)}`}>
+                risco {insight.riskScore} · {trendLabel(insight.trend)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card">
