@@ -75,7 +75,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card">
-          <h2 className="font-semibold text-slate-900">Ambientes com maior risco</h2>
+          <h2 className="font-semibold text-slate-900">Matriz de risco por ambiente</h2>
           <p className="mt-1 text-sm text-slate-500">
             Combina frequência, severidade de ocorrências e tom hostil detectado nas transcrições.
           </p>
